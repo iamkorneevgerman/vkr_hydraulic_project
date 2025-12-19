@@ -19,6 +19,7 @@ import L from "leaflet";
 
 import icon from "leaflet/dist/images/marker-icon.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
+import MapEffect from "./MapEffect";
 
 let DefaultIcon = L.icon({
   iconUrl: icon,
@@ -66,7 +67,6 @@ const NodeMarker = ({
   currentProjectId,
 }) => {
   const markerRef = useRef(null);
-  
 
   // Координаты для Leaflet [lat, lon]
   const position = [node.geometry.coordinates[1], node.geometry.coordinates[0]];
@@ -193,6 +193,7 @@ const MapComponent = () => {
       style={{ height: "100%", width: "100%" }}
       scrollWheelZoom={true}
     >
+      <MapEffect />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

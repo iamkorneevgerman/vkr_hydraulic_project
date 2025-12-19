@@ -19,6 +19,7 @@ const uiSlice = createSlice({
     notification: null,
     lastClickCoords: null,
     drawingMode: false,
+    focusTarget: null,
   },
   reducers: {
     setMode: (state, action) => {
@@ -95,6 +96,10 @@ const uiSlice = createSlice({
     setLastClickCoords: (state, action) => {
       state.lastClickCoords = action.payload;
     },
+
+    setFocusTarget: (state, action) => {
+      state.focusTarget = action.payload;
+    },
   },
 });
 
@@ -109,6 +114,7 @@ export const {
   setNotification,
   clearNotification,
   setLastClickCoords,
+  setFocusTarget,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

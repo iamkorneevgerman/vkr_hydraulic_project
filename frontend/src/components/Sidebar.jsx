@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { closeSidebar } from "../store/uiSlice";
 import { updateNode } from "../store/networkSlice";
 import { updatePipe } from "../store/networkSlice";
+import Dashboard from "./Dashboard";
 
 const Sidebar = () => {
   const dispatch = useDispatch();
@@ -33,8 +34,22 @@ const Sidebar = () => {
   }, [editingElement, nodes, pipes]);
 
   // Если ничего не выбрано — не рисуем панель
-  if (!editingElement) return null;
-
+  if (!editingElement) {
+    // Обертка для стилей, чтобы Dashboard выглядел так же, как панель
+    return (
+      <div
+        style={{
+          width: "320px",
+          height: "100%",
+          background: "#f4f4f4",
+          borderLeft: "1px solid #ccc",
+          overflowY: "auto",
+        }}
+      >
+        <Dashboard />
+      </div>
+    );
+  }
   // Обработчик изменения инпутов
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -81,7 +96,7 @@ const Sidebar = () => {
 
   const styles = {
     container: {
-      width: "300px",
+      width: "320px",
       height: "100%",
       background: "#f8f9fa",
       borderLeft: "1px solid #ddd",
