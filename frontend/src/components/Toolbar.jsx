@@ -8,12 +8,14 @@ import {
   DraftingCompass,
   Play,
   Loader2,
+  FileDown,
 } from "lucide-react"; // Иконки
+import { exportProjectToExcel } from "../utils/exportToExcel";
 
 const Toolbar = () => {
   const dispatch = useDispatch();
   const { mode } = useSelector((state) => state.ui);
-  const { calculationStatus, currentProjectId } = useSelector(
+  const { calculationStatus, currentProjectId, nodes, pipes } = useSelector(
     (state) => state.network
   );
 
@@ -23,6 +25,10 @@ const Toolbar = () => {
     } else {
       alert("Проект не загружен!");
     }
+  };
+
+  const handleExport = () => {
+    exportProjectToExcel(nodes, pipes);
   };
 
   // Компонент Кнопки с Подсказкой (Tooltip)
@@ -118,7 +124,18 @@ const Toolbar = () => {
           active={false}
           disabled={calculationStatus === "loading"}
           onClick={handleCalculate}
-          color="#28a745" // Зеленая иконка Play
+          color="#28a745"
+        />
+      </div>
+
+      {/* Группа Экспорта */}
+      <div style={{ marginTop: "10px" }}>
+        <ToolButton
+          icon={FileDown}
+          label="Экспорт в Excel"
+          active={false}
+          onClick={handleExport}
+          color="#0056b3"
         />
       </div>
     </div>

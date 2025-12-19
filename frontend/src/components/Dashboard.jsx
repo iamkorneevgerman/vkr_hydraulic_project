@@ -2,6 +2,20 @@ import React, { useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { setFocusTarget, setEditingElement } from "../store/uiSlice";
 
+// === CHART JS ИМПОРТЫ ===
+import {
+  Chart as ChartJS,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import { Scatter } from "react-chartjs-2";
+
+ChartJS.register(LinearScale, PointElement, LineElement, Tooltip, Legend);
+// =========================
+
 const Dashboard = () => {
   const dispatch = useDispatch();
   const { nodes, pipes, calculationStatus } = useSelector(
@@ -9,7 +23,6 @@ const Dashboard = () => {
   );
 
   // === 1. РАСЧЕТ СТАТИСТИКИ ===
-  // Используем useMemo, чтобы не пересчитывать при каждом клике
   const stats = useMemo(() => {
     let totalLength = 0;
     let totalDemand = 0;
@@ -36,7 +49,6 @@ const Dashboard = () => {
   const alerts = useMemo(() => {
     const list = [];
 
-    // Проверка давлений
     nodes.forEach((n) => {
       const p = n.properties.calculated_pressure;
       if (p !== null && p !== undefined) {
@@ -58,21 +70,20 @@ const Dashboard = () => {
       }
     });
 
-    // Проверка скоростей
     pipes.forEach((p) => {
       const v = p.properties.calculated_velocity;
       if (v !== null && v !== undefined) {
-        if (v > 2.0) {
-          list.push({
-            type: "warning",
-            msg: `Высокая скорость (${v.toFixed(2)} м/с)`,
-            element: p,
-            elType: "pipe",
-          });
-        } else if (v > 5.0) {
+        if (v > 5.0) {
           list.push({
             type: "critical",
             msg: `Критич. скорость (${v.toFixed(2)} м/с)`,
+            element: p,
+            elType: "pipe",
+          });
+        } else if (v > 2.0) {
+          list.push({
+            type: "warning",
+            msg: `Высокая скорость (${v.toFixed(2)} м/с)`,
             element: p,
             elType: "pipe",
           });
@@ -85,25 +96,71 @@ const Dashboard = () => {
 
   // === 3. ОБРАБОТКА КЛИКА ПО АЛЕРТУ ===
   const handleAlertClick = (item) => {
-    // 1. Летим к элементу
     let lat, lng;
 
     if (item.elType === "node") {
       lng = item.element.geometry.coordinates[0];
       lat = item.element.geometry.coordinates[1];
     } else {
-      // Для трубы берем первую точку
       lng = item.element.geometry.coordinates[0][0];
       lat = item.element.geometry.coordinates[0][1];
     }
 
     dispatch(setFocusTarget({ lat, lng, zoom: 18 }));
-
-    // 2. Открываем его свойства
     dispatch(setEditingElement({ type: item.elType, id: item.element.id }));
   };
 
-  // Стили
+  // === ПОДГОТОВКА ДАННЫХ ДЛЯ ГРАФИКА ===
+  const chartData = useMemo(() => {
+    const points = [];
+
+    nodes.forEach((n) => {
+      const elev = n.properties.elevation;
+      const press = n.properties.calculated_pressure;
+
+      if (
+        elev !== null &&
+        elev !== undefined &&
+        press !== null &&
+        press !== undefined
+      ) {
+        points.push({ x: elev, y: press });
+      }
+    });
+
+    return {
+      datasets: [
+        {
+          label: "Узлы сети",
+          data: points,
+          backgroundColor: "rgba(53, 162, 235, 1)",
+        },
+      ],
+    };
+  }, [nodes]);
+
+  const chartOptions = {
+    scales: {
+      x: {
+        title: { display: true, text: "Высота земли (м)" },
+        type: "linear",
+        position: "bottom",
+      },
+      y: {
+        title: { display: true, text: "Давление (м)" },
+      },
+    },
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: (ctx) => `H=${ctx.parsed.x}м, P=${ctx.parsed.y.toFixed(2)}м`,
+        },
+      },
+    },
+    maintainAspectRatio: false,
+  };
+
+  // === СТИЛИ ===
   const s = {
     container: { padding: "20px", fontFamily: "Arial, sans-serif" },
     card: {
@@ -136,24 +193,28 @@ const Dashboard = () => {
     <div style={s.container}>
       <h2>📊 Аналитика сети</h2>
 
-      {/* КАРТОЧКА СТАТИСТИКИ */}
+      {/* СТАТИСТИКА */}
       <div style={s.card}>
         <h3 style={s.title}>Сводка</h3>
         <div style={s.statRow}>
-          <span>Всего узлов:</span> <b>{stats.nodesCount}</b>
+          <span>Всего узлов:</span>
+          <b>{stats.nodesCount}</b>
         </div>
         <div style={s.statRow}>
-          <span>Всего труб:</span> <b>{stats.pipesCount}</b>
+          <span>Всего труб:</span>
+          <b>{stats.pipesCount}</b>
         </div>
         <div style={s.statRow}>
-          <span>Длина сети:</span> <b>{stats.totalLength} м</b>
+          <span>Длина сети:</span>
+          <b>{stats.totalLength} м</b>
         </div>
         <div style={s.statRow}>
-          <span>Потребление:</span> <b>{stats.totalDemand} м³/с</b>
+          <span>Потребление:</span>
+          <b>{stats.totalDemand} м³/с</b>
         </div>
       </div>
 
-      {/* СПИСОК ПРОБЛЕМ */}
+      {/* ПРОБЛЕМЫ */}
       {calculationStatus === "success" && (
         <div style={s.card}>
           <h3 style={s.title}>
@@ -164,12 +225,6 @@ const Dashboard = () => {
               </span>
             )}
           </h3>
-
-          {alerts.length > 0 && (
-            <div style={{ marginBottom: "5px", color: "#666" }}>
-              Найдено проблем: {alerts.length}
-            </div>
-          )}
 
           {alerts.map((item, idx) => (
             <div
@@ -186,9 +241,16 @@ const Dashboard = () => {
         </div>
       )}
 
-      {calculationStatus !== "success" && (
-        <div style={{ ...s.card, color: "#666", fontStyle: "italic" }}>
-          Выполните расчет, чтобы увидеть анализ давлений и скоростей.
+      {/* === ГРАФИК === */}
+      {calculationStatus === "success" && (
+        <div style={s.card}>
+          <h3 style={s.title}>Зависимость P(H)</h3>
+          <div style={{ height: "200px" }}>
+            <Scatter data={chartData} options={chartOptions} />
+          </div>
+          <small style={{ color: "#777", fontSize: "11px" }}>
+            Физическая корреляция: чем ниже точка, тем выше давление.
+          </small>
         </div>
       )}
     </div>
