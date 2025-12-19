@@ -3,6 +3,11 @@ import axios from "axios";
 // Создаем экземпляр axios с базовыми настройками
 const api = axios.create({
   baseURL: "/api", // Vite проксирует это на http://127.0.0.1:8000/api
+  // 1. Разрешаем передачу кук (там лежит сессия админа)
+  withCredentials: true,
+  // 2. Учим axios искать CSRF токен в куках Django и отправлять его в заголовке
+  xsrfCookieName: "csrftoken",
+  xsrfHeaderName: "X-CSRFToken",
 });
 
 // Функция для получения узлов конкретного проекта
