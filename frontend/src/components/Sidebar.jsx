@@ -33,6 +33,28 @@ const Sidebar = () => {
     }
   }, [editingElement, nodes, pipes]);
 
+  // ===== СПРАВОЧНИК МАТЕРИАЛОВ =====
+  const materialsDB = {
+    new_steel: { label: "Сталь (новая)", roughness: 0.05 },
+    old_steel: { label: "Сталь (старая)", roughness: 1.0 },
+    plastic: { label: "Пластик / ПНД", roughness: 0.01 },
+    cast_iron: { label: "Чугун", roughness: 0.25 },
+    custom: { label: "Другое...", roughness: 0.1 },
+  };
+
+  // ===== ОБРАБОТЧИК ВЫБОРА МАТЕРИАЛА =====
+  const handleMaterialChange = (e) => {
+    const matKey = e.target.value;
+    const matData = materialsDB[matKey];
+
+    setFormData((prev) => ({
+      ...prev,
+      material: matKey,
+      roughness_coefficient:
+        matKey === "custom" ? prev.roughness_coefficient : matData.roughness,
+    }));
+  };
+
   // Если ничего не выбрано — не рисуем панель
   if (!editingElement) {
     // Обертка для стилей, чтобы Dashboard выглядел так же, как панель
@@ -251,16 +273,46 @@ const Sidebar = () => {
               onChange={handleChange}
             />
           </div>
+          {/* ===== МАТЕРИАЛ ===== */}
+          <div style={styles.inputGroup}>
+            <label>Материал</label>
+            <select
+              style={styles.input}
+              name="material"
+              value={formData.material || "custom"}
+              onChange={handleMaterialChange}
+            >
+              {Object.entries(materialsDB).map(([key, info]) => (
+                <option key={key} value={key}>
+                  {info.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* ===== ШЕРОХОВАТОСТЬ ===== */}
           <div style={styles.inputGroup}>
             <label>Шероховатость (мм)</label>
             <input
-              style={styles.input}
+              style={{
+                ...styles.input,
+                background:
+                  formData.material && formData.material !== "custom"
+                    ? "#eee"
+                    : "white",
+              }}
               type="number"
               step="0.01"
               name="roughness_coefficient"
-              value={formData.roughness_coefficient || 0.1}
+              value={formData.roughness_coefficient || 0}
               onChange={handleChange}
+              readOnly={formData.material && formData.material !== "custom"}
             />
+            {formData.material && formData.material !== "custom" && (
+              <small style={{ fontSize: "10px", color: "gray" }}>
+                Автоматически по материалу
+              </small>
+            )}
           </div>
 
           {/* Результаты расчета (только чтение) */}

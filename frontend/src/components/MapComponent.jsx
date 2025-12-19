@@ -1,3 +1,4 @@
+// src/components/MapComponent.jsx
 import React, { useMemo, useRef } from "react";
 import {
   MapContainer,
@@ -6,12 +7,12 @@ import {
   Polyline,
   Popup,
   useMapEvents,
+  LayersControl,
 } from "react-leaflet";
 import { useSelector, useDispatch } from "react-redux";
 import { addNode, moveNode, addPipe } from "../store/networkSlice";
 import {
   selectNode,
-  setMode,
   setEditingElement,
   resetSelection,
 } from "../store/uiSlice";
@@ -29,7 +30,8 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Компонент для клика по пустому месту (Создание узла)
+/* ================= MapClickHandler ================= */
+
 const MapClickHandler = () => {
   const dispatch = useDispatch();
   const { mode } = useSelector((state) => state.ui);
@@ -40,24 +42,27 @@ const MapClickHandler = () => {
   useMapEvents({
     click(e) {
       if (mode === "add_node" && currentProjectId) {
-        const newNode = {
-          project: currentProjectId,
-          name: `Узел ${Date.now()}`,
-          node_type: "Junction",
-          elevation: 0,
-          geometry: {
-            type: "Point",
-            coordinates: [e.latlng.lng, e.latlng.lat],
-          },
-        };
-        dispatch(addNode(newNode));
+        dispatch(
+          addNode({
+            project: currentProjectId,
+            name: `Узел ${Date.now()}`,
+            node_type: "Junction",
+            elevation: 0,
+            geometry: {
+              type: "Point",
+              coordinates: [e.latlng.lng, e.latlng.lat],
+            },
+          })
+        );
       }
     },
   });
+
   return null;
 };
 
-// Компонент одного маркера
+/* ================= NodeMarker ================= */
+
 const NodeMarker = ({
   node,
   mode,
@@ -67,74 +72,60 @@ const NodeMarker = ({
   currentProjectId,
 }) => {
   const markerRef = useRef(null);
-
-  // Координаты для Leaflet [lat, lon]
   const position = [node.geometry.coordinates[1], node.geometry.coordinates[0]];
-
-  // Определяем, нужно ли затемнить маркер
-  const opacity = mode === "add_pipe" && selectedNodeId === node.id ? 0.5 : 1.0;
+  const opacity = mode === "add_pipe" && selectedNodeId === node.id ? 0.5 : 1;
 
   const eventHandlers = useMemo(
     () => ({
-      // Когда маркер перетащили и отпустили
       dragend() {
         const marker = markerRef.current;
-        if (marker != null) {
+        if (marker) {
           const { lat, lng } = marker.getLatLng();
           if (window.confirm(`Переместить узел ${node.id}?`)) {
             dispatch(moveNode({ id: node.id, lat, lng }));
           } else {
-            // Возвращаем на место при отмене
             marker.setLatLng(position);
           }
         }
       },
-
-      // Клик по маркеру
       click(e) {
         L.DomEvent.stopPropagation(e);
 
-        // Режим добавления трубы
         if (mode === "add_pipe") {
           if (!selectedNodeId) {
-            // 1. Выбираем первый узел
             dispatch(selectNode(node.id));
           } else if (selectedNodeId !== node.id) {
-            // 2. Выбираем второй узел и создаем трубу
             const startNode = nodes.find((n) => n.id === selectedNodeId);
-
             if (startNode) {
-              const newPipe = {
-                project: currentProjectId,
-                name: `Труба ${selectedNodeId}-${node.id}`,
-                from_node: selectedNodeId,
-                to_node: node.id,
-                length: 100,
-                diameter: 100,
-                roughness_coefficient: 0.1,
-                material: "Сталь",
-                geometry: {
-                  type: "LineString",
-                  coordinates: [
-                    startNode.geometry.coordinates,
-                    node.geometry.coordinates,
-                  ],
-                },
-              };
-              dispatch(addPipe(newPipe));
+              dispatch(
+                addPipe({
+                  project: currentProjectId,
+                  name: `Труба ${selectedNodeId}-${node.id}`,
+                  from_node: selectedNodeId,
+                  to_node: node.id,
+                  length: 100,
+                  diameter: 100,
+                  roughness_coefficient: 0.1,
+                  material: "Сталь",
+                  geometry: {
+                    type: "LineString",
+                    coordinates: [
+                      startNode.geometry.coordinates,
+                      node.geometry.coordinates,
+                    ],
+                  },
+                })
+              );
               dispatch(resetSelection());
               alert("Труба создана!");
             }
           }
-        }
-        // Режим просмотра - открываем боковую панель
-        else if (mode === "view") {
+        } else if (mode === "view") {
           dispatch(setEditingElement({ type: "node", id: node.id }));
         }
-        // Режим добавления узла - ничего не делаем (клики обрабатываются MapClickHandler)
       },
     }),
-    [node, mode, selectedNodeId, dispatch, nodes, position, currentProjectId]
+    [node, mode, selectedNodeId, nodes, position, dispatch, currentProjectId]
   );
 
   return (
@@ -144,17 +135,11 @@ const NodeMarker = ({
       draggable={mode === "view"}
       opacity={opacity}
       eventHandlers={eventHandlers}
-    >
-      <Popup>
-        <strong>Узел {node.id}</strong>
-        <br />
-        Тип: {node.properties?.node_type || "Junction"}
-        <br />
-        Название: {node.properties?.name || "Не указано"}
-      </Popup>
-    </Marker>
+    />
   );
 };
+
+/* ================= MapComponent ================= */
 
 const MapComponent = () => {
   const dispatch = useDispatch();
@@ -163,58 +148,38 @@ const MapComponent = () => {
   );
   const { mode, selectedNodeId } = useSelector((state) => state.ui);
 
-  const getPipeColor = (pipe) => {
-    // Используем ?. (опциональную цепочку) для защиты
-    const velocity = pipe.properties?.calculated_velocity;
-
-    // Если скорость не посчитана или равна null/undefined
-    if (velocity == null) return "gray";
-
-    // Если скорость 0 (или очень близка к 0)
-    if (Math.abs(velocity) < 0.001) return "gray";
-
-    // Градация цветов
-    if (velocity < 0.5) return "#00BFFF"; // DeepSkyBlue
-    if (velocity < 2.0) return "blue";
-    return "red";
-  };
-
-  // Функция толщины линии (чем больше расход, тем толще)
-  const getPipeWeight = (pipe) => {
-    // Пример: базовые 4px + расход * 10 (но не более 10px)
-    const flow = Math.abs(pipe.properties.calculated_flow_rate || 0);
-    return Math.min(4 + flow * 50, 10);
-  };
-
   return (
     <MapContainer
       center={[55.75, 37.57]}
       zoom={13}
       style={{ height: "100%", width: "100%" }}
-      scrollWheelZoom={true}
     >
-      <MapEffect />
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      {/* ===== ПЕРЕКЛЮЧЕНИЕ СЛОЕВ ===== */}
+      <LayersControl position="topright">
+        <LayersControl.BaseLayer checked name="Схема (OSM)">
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        </LayersControl.BaseLayer>
 
+        <LayersControl.BaseLayer name="Спутник (Esri)">
+          <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+        </LayersControl.BaseLayer>
+
+        <LayersControl.BaseLayer name="Темная тема">
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+        </LayersControl.BaseLayer>
+      </LayersControl>
+
+      <MapEffect />
       <MapClickHandler />
 
-      {/* Отрисовка труб */}
+      {/* ===== ТРУБЫ ===== */}
       {pipes.map((pipe) => {
-        if (!pipe.geometry || !pipe.geometry.coordinates) return null;
-
+        if (!pipe.geometry) return null;
         const positions = pipe.geometry.coordinates.map((c) => [c[1], c[0]]);
-        const color = getPipeColor(pipe);
-        const weight = getPipeWeight(pipe);
-
         return (
           <Polyline
             key={pipe.id}
             positions={positions}
-            color={color}
-            weight={weight}
             eventHandlers={{
               click: (e) => {
                 L.DomEvent.stopPropagation(e);
@@ -223,27 +188,11 @@ const MapComponent = () => {
                 }
               },
             }}
-          >
-            <Popup>
-              Труба ID: {pipe.id}
-              <br />
-              {/* Если значение есть, то округляем. Если нет - пишем прочерк */}
-              V:{" "}
-              {pipe.properties.calculated_velocity != null
-                ? pipe.properties.calculated_velocity.toFixed(2)
-                : "-"}{" "}
-              м/с
-              <br />
-              Q:{" "}
-              {pipe.properties.calculated_flow_rate != null
-                ? pipe.properties.calculated_flow_rate.toFixed(4)
-                : "-"}
-            </Popup>
-          </Polyline>
+          />
         );
       })}
 
-      {/* Отрисовка узлов */}
+      {/* ===== УЗЛЫ ===== */}
       {nodes.map((node) => (
         <NodeMarker
           key={node.id}
