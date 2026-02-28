@@ -98,7 +98,7 @@ const Sidebar = () => {
               ? parseFloat(formData.fixed_head)
               : null,
           },
-        })
+        }),
       );
     } else {
       dispatch(
@@ -109,8 +109,9 @@ const Sidebar = () => {
             length: parseFloat(formData.length),
             diameter: parseFloat(formData.diameter),
             roughness_coefficient: parseFloat(formData.roughness_coefficient),
+            material: formData.material,
           },
-        })
+        }),
       );
     }
     alert("Сохранено!");
@@ -327,12 +328,12 @@ const Sidebar = () => {
             <br />
             Расход:{" "}
             {formData.calculated_flow_rate
-              ? parseFloat(formData.calculated_flow_rate).toFixed(4)
+              ? Math.abs(formData.calculated_flow_rate).toFixed(4)
               : "-"}{" "}
             <br />
             Скорость:{" "}
             {formData.calculated_velocity
-              ? parseFloat(formData.calculated_velocity).toFixed(2)
+              ? Math.abs(formData.calculated_velocity).toFixed(2)
               : "-"}{" "}
             м/с
           </div>
