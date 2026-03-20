@@ -1,4 +1,3 @@
-
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   fetchNodes,
@@ -8,6 +7,9 @@ import {
   createPipe,
   updatePipe as apiUpdatePipe,
   calculateNetwork as apiCalculateNetwork,
+  fetchProjects,
+  deleteNode,
+  deletePipe,
 } from "../services/api";
 
 // 1. Загрузка всей сети (GET)
@@ -19,7 +21,15 @@ export const loadNetwork = createAsyncThunk(
       fetchPipes(projectId),
     ]);
     return { nodes: nodesData, pipes: pipesData };
-  }
+  },
+);
+
+// Загрузка списка проектов
+export const loadProjectList = createAsyncThunk(
+  "network/loadProjectList",
+  async () => {
+    return await fetchProjects();
+  },
 );
 
 // 2. Добавить узел (POST)
@@ -35,7 +45,7 @@ export const moveNode = createAsyncThunk(
     const geometry = { type: "Point", coordinates: [lng, lat] };
     const updatedNode = await apiUpdateNode(id, { geometry });
     return updatedNode;
-  }
+  },
 );
 
 // 4. Добавить трубу (POST)
@@ -50,7 +60,7 @@ export const updatePipe = createAsyncThunk(
   async ({ id, data }) => {
     const updatedPipe = await apiUpdatePipe(id, data);
     return updatedPipe;
-  }
+  },
 );
 
 // 6. Обновить параметры узла (PATCH)
@@ -59,16 +69,46 @@ export const updateNode = createAsyncThunk(
   async ({ id, data }) => {
     const updatedNode = await apiUpdateNode(id, data);
     return updatedNode;
+  },
+);
+
+// 7. Удалить узел (DELETE + перезагрузка сети)
+export const removeNode = createAsyncThunk(
+  "network/removeNode",
+  async (id, { dispatch, getState }) => {
+    await deleteNode(id);
+
+    const projectId = getState().network.currentProjectId;
+    if (projectId) {
+      dispatch(loadNetwork(projectId)); // синхронизация после каскадного удаления
+    }
+
+    return id;
+  },
+);
+
+// 8. Удалить трубу (DELETE + перезагрузка сети)
+export const removePipe = createAsyncThunk(
+  "network/removePipe",
+  async (id, { dispatch, getState }) => {
+    await deletePipe(id);
+
+    const projectId = getState().network.currentProjectId;
+    if (projectId) {
+      dispatch(loadNetwork(projectId));
+    }
+
+    return id;
   }
 );
 
-// 7. ЗАПУСК РАСЧЕТА (POST)
+// 9. ЗАПУСК РАСЧЕТА (POST)
 export const runCalculation = createAsyncThunk(
   "network/runCalculation",
   async (projectId) => {
     const result = await apiCalculateNetwork(projectId);
     return result; // Возвращаем весь ответ сервера { status:..., data: { nodes:..., pipes:... } }
-  }
+  },
 );
 
 // === SLICE ===
@@ -77,6 +117,7 @@ const networkSlice = createSlice({
   initialState: {
     nodes: [],
     pipes: [],
+    projectsList: [],
     status: "idle",
     currentProjectId: null,
     // Статусы для отдельных операций
@@ -89,6 +130,9 @@ const networkSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
+      .addCase(loadProjectList.fulfilled, (state, action) => {
+        state.projectsList = action.payload; // Сохраняем список [{id: 1, name: '...'}, ...]
+      })
       // --- Load Network ---
       .addCase(loadNetwork.pending, (state) => {
         state.status = "loading";

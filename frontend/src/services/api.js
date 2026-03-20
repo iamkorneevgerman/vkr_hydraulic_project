@@ -22,6 +22,14 @@ export const fetchPipes = async (projectId) => {
   return response.data;
 };
 
+// --- ПРОЕКТЫ ---
+
+// Получить список всех проектов
+export const fetchProjects = async () => {
+  const response = await api.get("/projects/");
+  return response.data;
+};
+
 // --- УЗЛЫ ---
 
 // Создание узла (POST)

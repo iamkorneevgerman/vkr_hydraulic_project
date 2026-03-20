@@ -1,7 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setMode } from "../store/uiSlice";
-import { runCalculation } from "../store/networkSlice";
+import {
+  runCalculation,
+  loadNetwork,
+  loadProjectList,
+} from "../store/networkSlice";
 import {
   MousePointer2,
   MapPin,
@@ -9,15 +13,35 @@ import {
   Play,
   Loader2,
   FileDown,
-} from "lucide-react"; // Иконки
+} from "lucide-react";
 import { exportProjectToExcel } from "../utils/exportToExcel";
 
 const Toolbar = () => {
   const dispatch = useDispatch();
+
   const { mode } = useSelector((state) => state.ui);
-  const { calculationStatus, currentProjectId, nodes, pipes } = useSelector(
-    (state) => state.network
-  );
+  const { calculationStatus, currentProjectId, nodes, pipes, projectsList } =
+    useSelector((state) => state.network);
+
+  useEffect(() => {
+    dispatch(loadProjectList());
+  }, [dispatch]);
+
+  // АВТОВЫБОР ПЕРВОГО ПРОЕКТА
+  useEffect(() => {
+    // Если список проектов загрузился, и текущий проект еще не выбран
+    if (projectsList && projectsList.length > 0 && !currentProjectId) {
+      const firstProjectId = projectsList[0].id;
+      dispatch(loadNetwork(firstProjectId)); // Автоматически загружаем первый
+    }
+  }, [projectsList, currentProjectId, dispatch]);
+
+  const handleProjectChange = (e) => {
+    const newProjectId = Number(e.target.value);
+    if (newProjectId) {
+      dispatch(loadNetwork(newProjectId));
+    }
+  };
 
   const handleCalculate = () => {
     if (currentProjectId) {
@@ -87,6 +111,37 @@ const Toolbar = () => {
         gap: "5px",
       }}
     >
+      {/* Выбор проекта */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.8)",
+          padding: "8px",
+          borderRadius: "10px",
+          backdropFilter: "blur(4px)",
+          marginBottom: "10px",
+        }}
+      >
+        <select
+          value={currentProjectId || ""}
+          onChange={handleProjectChange}
+          style={{
+            width: "100%",
+            padding: "6px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+          }}
+        >
+          <option value="" disabled>
+            Выберите проект...
+          </option>
+
+          {projectsList?.map((proj) => (
+            <option key={proj.id} value={proj.id}>
+              {proj.name}
+            </option>
+          ))}
+        </select>
+      </div>
       {/* Группа Редактирования */}
       <div
         style={{

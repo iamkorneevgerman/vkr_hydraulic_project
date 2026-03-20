@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { closeSidebar } from "../store/uiSlice";
-import { updateNode } from "../store/networkSlice";
-import { updatePipe } from "../store/networkSlice";
+import {
+  updateNode,
+  updatePipe,
+  removeNode,
+  removePipe,
+} from "../store/networkSlice";
 import Dashboard from "./Dashboard";
 
 const Sidebar = () => {
@@ -115,6 +119,22 @@ const Sidebar = () => {
       );
     }
     alert("Сохранено!");
+  };
+
+  const handleDelete = () => {
+    const isConfirmed = window.confirm(
+      "Вы уверены, что хотите удалить этот элемент? Это действие необратимо.",
+    );
+    if (!isConfirmed) return;
+
+    if (editingElement.type === "node") {
+      dispatch(removeNode(editingElement.id));
+    } else {
+      dispatch(removePipe(editingElement.id));
+    }
+
+    // Закрываем панель после удаления
+    dispatch(closeSidebar());
   };
 
   const styles = {
@@ -340,9 +360,25 @@ const Sidebar = () => {
         </>
       )}
 
-      <button style={styles.btnSave} onClick={handleSave}>
-        Сохранить
-      </button>
+      <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+        <button style={styles.btnSave} onClick={handleSave}>
+          Сохранить
+        </button>
+
+        <button
+          style={{
+            padding: "10px",
+            background: "#dc3545",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+          }}
+          onClick={handleDelete}
+        >
+          🗑 Удалить
+        </button>
+      </div>
     </div>
   );
 };

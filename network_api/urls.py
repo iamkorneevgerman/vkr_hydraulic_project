@@ -12,7 +12,7 @@ router = DefaultRouter()
 # /projects/
 # /nodes/
 # /pipes/
-router.register(r'projects', ProjectViewSet)
+router.register(r'projects', ProjectViewSet, basename='project')
 router.register(r'nodes', NodeViewSet)
 router.register(r'pipes', PipeViewSet)
 

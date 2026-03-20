@@ -1,10 +1,18 @@
 # network_api/models.py
 from django.contrib.gis.db import models
+from django.contrib.auth.models import User # добавил сейчас
 
 # --- Модель 1: Проект/Схема Сети (Project) ---
 # Это основная сущность, которая объединяет все элементы одной гидравлической сети.
 # Каждый узел и участок будут привязаны к какому-либо проекту.
 class Project(models.Model):
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='projects',
+        null=True,
+        blank=True
+    )
     name = models.CharField(
         max_length=255,
         verbose_name="Название проекта"

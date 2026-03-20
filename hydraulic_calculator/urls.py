@@ -19,5 +19,5 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('network_api.urls')),  # Все наши адреса будут начинаться с /api/
+    path('api/', include('network_api.urls')),  # Все адреса будут начинаться с /api/
 ]

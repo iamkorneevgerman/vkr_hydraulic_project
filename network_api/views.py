@@ -12,6 +12,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
 
+    #def get_queryset(self):
+        # Если пользователь не авторизован - отдаем пустой список (или можно тестовые данные)
+        #if not self.request.user.is_authenticated:
+          #  return Project.objects.none() 
+        # Отдаем ТОЛЬКО проекты, принадлежащие текущему пользователю
+       # return Project.objects.filter(owner=self.request.user)
+
     # ... (стандартный код ViewSet) ...
 
     # === ОБНОВЛЕННЫЙ ЭНДПОИНТ ДЛЯ РАСЧЕТА ===

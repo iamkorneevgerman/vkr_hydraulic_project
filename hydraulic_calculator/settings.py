@@ -14,14 +14,15 @@ from pathlib import Path
 
 import os
 
-# Добавьте эти строки ПЕРЕД DATABASES:
-# Правильные пути
+# Настройки геопространственных библиотек
+# Используются геопространственные вычисления, поэтому подключены библиотеки GDAL и PROJ, которые обеспечивают обработку координат и геометрических объекто
 os.environ['GDAL_DATA'] = r'C:/Users/malbo/AppData/Local/Programs/OSGeo4W/apps/gdal/share/gdal'
 os.environ['PROJ_LIB'] = r'C:/Users/malbo/AppData/Local/Programs/OSGeo4W/share/proj'
 
 GDAL_LIBRARY_PATH = r'C:/Users/malbo/AppData/Local/Programs/OSGeo4W/bin/gdal312.dll'
 GEOS_LIBRARY_PATH = r'C:/Users/malbo/AppData/Local/Programs/OSGeo4W/bin/geos_c.dll'
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Корневая папка проекта
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -93,11 +94,11 @@ WSGI_APPLICATION = 'hydraulic_calculator.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis', # Очень важно! Используем движок PostGIS
-        'NAME': 'hydraulic_db',                             # Имя твоей БД
+        'ENGINE': 'django.contrib.gis.db.backends.postgis', # Используем движок PostGIS
+        'NAME': 'hydraulic_db',                             # Имя БД
         'USER': 'hydraulic_user',                           # Имя пользователя
-        'PASSWORD': 'user031104',        # Пароль
-        'HOST': 'localhost',                                # Обычно localhost
+        'PASSWORD': 'user031104',                           # Пароль
+        'HOST': 'localhost',
         'PORT': '5432',                                     # Стандартный порт PostgreSQL
     }
 }
@@ -155,7 +156,7 @@ CORS_ALLOWED_ORIGINS = [
 # 2. Разрешаем передачу кук/креденшелов
 CORS_ALLOW_CREDENTIALS = True
 
-# 3. ВАЖНО! Доверяем этому источнику для CSRF (чтобы работали POST запросы)
+# 3. Доверяем этому источнику для CSRF (чтобы работали POST запросы)
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
