@@ -1,3 +1,4 @@
+// src/components/Toolbar.jsx
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setMode } from "../store/uiSlice";
@@ -13,9 +14,12 @@ import {
   Play,
   Loader2,
   FileDown,
+  LogOut,
+  User,
 } from "lucide-react";
 import { exportProjectToExcel } from "../utils/exportToExcel";
 import { logout } from "../store/authSlice";
+import styles from "./Toolbar.module.css";
 
 const Toolbar = () => {
   const dispatch = useDispatch();
@@ -29,136 +33,46 @@ const Toolbar = () => {
     dispatch(loadProjectList());
   }, [dispatch]);
 
-  // АВТОВЫБОР ПЕРВОГО ПРОЕКТА
   useEffect(() => {
-    // Если список проектов загрузился, и текущий проект еще не выбран
-    if (projectsList && projectsList.length > 0 && !currentProjectId) {
-      const firstProjectId = projectsList[0].id;
-      dispatch(loadNetwork(firstProjectId)); // Автоматически загружаем первый
+    if (projectsList?.length > 0 && !currentProjectId) {
+      dispatch(loadNetwork(projectsList[0].id));
     }
   }, [projectsList, currentProjectId, dispatch]);
 
   const handleProjectChange = (e) => {
-    const newProjectId = Number(e.target.value);
-    if (newProjectId) {
-      dispatch(loadNetwork(newProjectId));
-    }
+    const newId = Number(e.target.value);
+    if (newId) dispatch(loadNetwork(newId));
   };
 
   const handleCalculate = () => {
-    if (currentProjectId) {
-      dispatch(runCalculation(currentProjectId));
-    } else {
-      alert("Проект не загружен!");
-    }
+    if (currentProjectId) dispatch(runCalculation(currentProjectId));
+    else alert("Проект не загружен!");
   };
-
-  const handleExport = () => {
-    exportProjectToExcel(nodes, pipes);
-  };
-
-  // Компонент Кнопки с Подсказкой (Tooltip)
-  const ToolButton = ({
-    icon: Icon,
-    label,
-    active,
-    onClick,
-    disabled,
-    color,
-  }) => (
-    <div
-      className="tool-btn-wrapper"
-      style={{ position: "relative", marginBottom: "8px" }}
-    >
-      <button
-        onClick={onClick}
-        disabled={disabled}
-        title={label} // Стандартная подсказка браузера
-        style={{
-          width: "44px",
-          height: "44px",
-          borderRadius: "8px",
-          border: "none",
-          background: active ? "#007bff" : "white",
-          color: active ? "white" : color || "#444",
-          boxShadow: "0 2px 5px rgba(0,0,0,0.15)",
-          cursor: disabled ? "not-allowed" : "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "all 0.2s ease",
-          opacity: disabled ? 0.6 : 1,
-        }}
-        onMouseEnter={(e) => {
-          if (!disabled) e.currentTarget.style.transform = "scale(1.05)";
-        }}
-        onMouseLeave={(e) => {
-          if (!disabled) e.currentTarget.style.transform = "scale(1)";
-        }}
-      >
-        <Icon size={24} />
-      </button>
-    </div>
-  );
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: 20,
-        left: 20,
-        zIndex: 1000,
-        display: "flex",
-        flexDirection: "column",
-        gap: "5px",
-      }}
-    >
-      {/* Пользователь */}
-      <div
-        style={{
-          background: "rgba(255,255,255,0.8)",
-          padding: "8px",
-          borderRadius: "10px",
-          backdropFilter: "blur(4px)",
-          marginBottom: "10px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          fontSize: "12px",
-        }}
-      >
-        <span>👤 {username}</span>
-        <span
-          style={{ color: "red", cursor: "pointer", fontWeight: "bold" }}
-          onClick={() => dispatch(logout())}
-        >
-          Выйти
-        </span>
-      </div>
-      {/* Выбор проекта */}
-      <div
-        style={{
-          background: "rgba(255,255,255,0.8)",
-          padding: "8px",
-          borderRadius: "10px",
-          backdropFilter: "blur(4px)",
-          marginBottom: "10px",
-        }}
-      >
+    <div className={styles.toolbarContainer}>
+      {/* --- БЛОК 1: Юзер и Проект --- */}
+      <div className={styles.topPanel}>
+        <div className={styles.userInfo}>
+          <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <User size={14} /> {username}
+          </span>
+          <span
+            className={styles.logoutBtn}
+            onClick={() => dispatch(logout())}
+            title="Выйти"
+          >
+            <LogOut size={16} />
+          </span>
+        </div>
         <select
+          className={styles.projectSelect}
           value={currentProjectId || ""}
           onChange={handleProjectChange}
-          style={{
-            width: "100%",
-            padding: "6px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
         >
           <option value="" disabled>
             Выберите проект...
           </option>
-
           {projectsList?.map((proj) => (
             <option key={proj.id} value={proj.id}>
               {proj.name}
@@ -166,56 +80,55 @@ const Toolbar = () => {
           ))}
         </select>
       </div>
-      {/* Группа Редактирования */}
-      <div
-        style={{
-          background: "rgba(255,255,255,0.5)",
-          padding: "5px",
-          borderRadius: "10px",
-          backdropFilter: "blur(4px)",
-        }}
-      >
-        <ToolButton
-          icon={MousePointer2}
-          label="Перемещение и Свойства (View)"
-          active={mode === "view"}
+
+      {/* --- БЛОК 2: Инструменты Карты --- */}
+      <div className={styles.toolsPanel}>
+        <button
+          className={`${styles.toolBtn} ${mode === "view" ? styles.toolBtnActive : ""}`}
           onClick={() => dispatch(setMode("view"))}
-        />
-        <ToolButton
-          icon={MapPin}
-          label="Добавить Узел"
-          active={mode === "add_node"}
+          title="Перемещение и выбор"
+        >
+          <MousePointer2 size={22} />
+        </button>
+        <button
+          className={`${styles.toolBtn} ${mode === "add_node" ? styles.toolBtnActive : ""}`}
           onClick={() => dispatch(setMode("add_node"))}
-        />
-        <ToolButton
-          icon={DraftingCompass}
-          label="Проложить Трубу"
-          active={mode === "add_pipe"}
+          title="Добавить Узел"
+        >
+          <MapPin size={22} />
+        </button>
+        <button
+          className={`${styles.toolBtn} ${mode === "add_pipe" ? styles.toolBtnActive : ""}`}
           onClick={() => dispatch(setMode("add_pipe"))}
-        />
-      </div>
+          title="Проложить Трубу"
+        >
+          <DraftingCompass size={22} />
+        </button>
 
-      {/* Группа Действий */}
-      <div style={{ marginTop: "10px" }}>
-        <ToolButton
-          icon={calculationStatus === "loading" ? Loader2 : Play}
-          label="Запустить Гидравлический Расчет"
-          active={false}
-          disabled={calculationStatus === "loading"}
+        <div className={styles.separator} />
+
+        {/* Экшены: Расчет */}
+        <button
+          className={`${styles.toolBtn} ${styles.calcBtn} ${calculationStatus === "loading" ? styles.toolBtnDisabled : ""}`}
           onClick={handleCalculate}
-          color="#28a745"
-        />
-      </div>
+          disabled={calculationStatus === "loading"}
+          title="Запустить Гидравлический Расчет"
+        >
+          {calculationStatus === "loading" ? (
+            <Loader2 size={22} className="lucide-spin" />
+          ) : (
+            <Play size={22} fill="currentColor" />
+          )}
+        </button>
 
-      {/* Группа Экспорта */}
-      <div style={{ marginTop: "10px" }}>
-        <ToolButton
-          icon={FileDown}
-          label="Экспорт в Excel"
-          active={false}
-          onClick={handleExport}
-          color="#0056b3"
-        />
+        {/* Экшены: Экспорт */}
+        <button
+          className={`${styles.toolBtn} ${styles.exportBtn}`}
+          onClick={() => exportProjectToExcel(nodes, pipes)}
+          title="Экспорт в Excel"
+        >
+          <FileDown size={22} />
+        </button>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+// src/components/Sidebar.jsx
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { closeSidebar } from "../store/uiSlice";
@@ -8,88 +9,65 @@ import {
   removePipe,
 } from "../store/networkSlice";
 import Dashboard from "./Dashboard";
+import styles from "./Sidebar.module.css";
+
+const materialsDB = {
+  new_steel: { label: "Сталь (новая)", roughness: 0.05 },
+  old_steel: { label: "Сталь (старая)", roughness: 1.0 },
+  plastic: { label: "Пластик / ПНД", roughness: 0.01 },
+  cast_iron: { label: "Чугун", roughness: 0.25 },
+  custom: { label: "Другое...", roughness: 0.1 },
+};
 
 const Sidebar = () => {
   const dispatch = useDispatch();
   const { editingElement } = useSelector((state) => state.ui);
   const { nodes, pipes } = useSelector((state) => state.network);
-
-  // Локальное состояние формы (чтобы можно было печатать в инпутах)
   const [formData, setFormData] = useState({});
 
-  // Когда меняется выбранный элемент, заполняем форму его данными
   useEffect(() => {
     if (!editingElement) return;
 
-    let data = null;
-    if (editingElement.type === "node") {
-      data = nodes.find((n) => n.id === editingElement.id);
-    } else if (editingElement.type === "pipe") {
-      data = pipes.find((p) => p.id === editingElement.id);
-    }
+    let data =
+      editingElement.type === "node"
+        ? nodes.find((n) => n.id === editingElement.id)
+        : pipes.find((p) => p.id === editingElement.id);
 
     if (data) {
-      // Берем свойства из properties (GeoJSON) + имя
       setFormData({
         name: data.properties.name || "",
-        ...data.properties, // elevation, diameter, node_type и т.д.
+        ...data.properties,
       });
     }
   }, [editingElement, nodes, pipes]);
 
-  // ===== СПРАВОЧНИК МАТЕРИАЛОВ =====
-  const materialsDB = {
-    new_steel: { label: "Сталь (новая)", roughness: 0.05 },
-    old_steel: { label: "Сталь (старая)", roughness: 1.0 },
-    plastic: { label: "Пластик / ПНД", roughness: 0.01 },
-    cast_iron: { label: "Чугун", roughness: 0.25 },
-    custom: { label: "Другое...", roughness: 0.1 },
-  };
-
-  // ===== ОБРАБОТЧИК ВЫБОРА МАТЕРИАЛА =====
-  const handleMaterialChange = (e) => {
-    const matKey = e.target.value;
-    const matData = materialsDB[matKey];
-
-    setFormData((prev) => ({
-      ...prev,
-      material: matKey,
-      roughness_coefficient:
-        matKey === "custom" ? prev.roughness_coefficient : matData.roughness,
-    }));
-  };
-
-  // Если ничего не выбрано — не рисуем панель
   if (!editingElement) {
-    // Обертка для стилей, чтобы Dashboard выглядел так же, как панель
     return (
-      <div
-        style={{
-          width: "320px",
-          height: "100%",
-          background: "#f4f4f4",
-          borderLeft: "1px solid #ccc",
-          overflowY: "auto",
-        }}
-      >
+      <div className={styles.dashboardWrapper}>
         <Dashboard />
       </div>
     );
   }
-  // Обработчик изменения инпутов
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleMaterialChange = (e) => {
+    const matKey = e.target.value;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      material: matKey,
+      roughness_coefficient:
+        matKey === "custom"
+          ? prev.roughness_coefficient
+          : materialsDB[matKey].roughness,
     }));
   };
 
-  // Сохранение
   const handleSave = () => {
     if (editingElement.type === "node") {
-      // У узла обновляем properties. В API (Django) поля лежат на верхнем уровне или внутри
-      // GeoFeatureModelSerializer ожидает плоскую структуру для полей модели.
       dispatch(
         updateNode({
           id: editingElement.id,
@@ -118,268 +96,199 @@ const Sidebar = () => {
         }),
       );
     }
-    alert("Сохранено!");
   };
 
   const handleDelete = () => {
-    const isConfirmed = window.confirm(
-      "Вы уверены, что хотите удалить этот элемент? Это действие необратимо.",
-    );
-    if (!isConfirmed) return;
-
-    if (editingElement.type === "node") {
-      dispatch(removeNode(editingElement.id));
-    } else {
-      dispatch(removePipe(editingElement.id));
+    if (window.confirm("Удалить этот элемент? Действие необратимо.")) {
+      if (editingElement.type === "node")
+        dispatch(removeNode(editingElement.id));
+      else dispatch(removePipe(editingElement.id));
+      dispatch(closeSidebar());
     }
-
-    // Закрываем панель после удаления
-    dispatch(closeSidebar());
   };
 
-  const styles = {
-    container: {
-      width: "320px",
-      height: "100%",
-      background: "#f8f9fa",
-      borderLeft: "1px solid #ddd",
-      padding: "20px",
-      boxSizing: "border-box",
-      display: "flex",
-      flexDirection: "column",
-      gap: "10px",
-      overflowY: "auto",
-    },
-    header: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-    },
-    inputGroup: { display: "flex", flexDirection: "column", gap: "5px" },
-    input: { padding: "5px", border: "1px solid #ccc", borderRadius: "4px" },
-    btnSave: {
-      padding: "10px",
-      background: "#28a745",
-      color: "white",
-      border: "none",
-      cursor: "pointer",
-      marginTop: "20px",
-    },
-    btnClose: {
-      background: "transparent",
-      border: "none",
-      fontSize: "20px",
-      cursor: "pointer",
-    },
-  };
+  const isNode = editingElement.type === "node";
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h3>
-          Редактирование: {editingElement.type === "node" ? "Узел" : "Труба"}
-        </h3>
+    <aside className={styles.sidebarWrapper}>
+      <div className={styles.header}>
+        <div>
+          <h3 className={styles.title}>Свойства элемента</h3>
+          <span className={styles.subtitle}>
+            {isNode ? "Узел" : "Участок трубы"} #{editingElement.id}
+          </span>
+        </div>
         <button
-          style={styles.btnClose}
+          className={styles.closeBtn}
           onClick={() => dispatch(closeSidebar())}
+          title="Закрыть"
         >
           ×
         </button>
       </div>
-      <p>ID: {editingElement.id}</p>
 
-      {/* Общее поле: Имя */}
-      <div style={styles.inputGroup}>
-        <label>Название</label>
-        <input
-          style={styles.input}
-          name="name"
-          value={formData.name || ""}
-          onChange={handleChange}
-        />
-      </div>
+      <div className={styles.content}>
+        <div className={styles.inputGroup}>
+          <label className={styles.label}>Название</label>
+          <input
+            className={styles.input}
+            name="name"
+            value={formData.name || ""}
+            onChange={handleChange}
+          />
+        </div>
 
-      {/* Поля ТОЛЬКО для УЗЛА */}
-      {editingElement.type === "node" && (
-        <>
-          <div style={styles.inputGroup}>
-            <label>Тип узла</label>
-            <select
-              style={styles.input}
-              name="node_type"
-              value={formData.node_type || "Junction"}
-              onChange={handleChange}
-            >
-              <option value="Junction">Соединение (Потребитель)</option>
-              <option value="Reservoir">Резервуар (Источник)</option>
-            </select>
-          </div>
-          <div style={styles.inputGroup}>
-            <label>Отметка земли (м)</label>
-            <input
-              style={styles.input}
-              type="number"
-              name="elevation"
-              value={formData.elevation || 0}
-              onChange={handleChange}
-            />
-          </div>
-
-          {formData.node_type === "Junction" && (
-            <div style={styles.inputGroup}>
-              <label>Потребление (м³/с)</label>
+        {/* --- ПОЛЯ УЗЛА --- */}
+        {isNode && (
+          <>
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Тип узла</label>
+              <select
+                className={styles.select}
+                name="node_type"
+                value={formData.node_type || "Junction"}
+                onChange={handleChange}
+              >
+                <option value="Junction">Соединение (Потребитель)</option>
+                <option value="Reservoir">Резервуар (Источник)</option>
+              </select>
+            </div>
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Отметка земли (м)</label>
               <input
-                style={styles.input}
+                className={styles.input}
                 type="number"
-                step="0.001"
-                name="base_demand"
-                value={formData.base_demand || 0}
+                name="elevation"
+                value={formData.elevation || 0}
                 onChange={handleChange}
               />
             </div>
-          )}
 
-          {formData.node_type === "Reservoir" && (
-            <div style={styles.inputGroup}>
-              <label>Напор источника (м)</label>
-              <input
-                style={styles.input}
-                type="number"
-                name="fixed_head"
-                value={formData.fixed_head || 0}
-                onChange={handleChange}
-              />
-            </div>
-          )}
-
-          {/* Результаты расчета (только чтение) */}
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "10px",
-              background: "#e9ecef",
-            }}
-          >
-            <strong>Результаты:</strong>
-            <br />
-            Давление:{" "}
-            {formData.calculated_pressure
-              ? parseFloat(formData.calculated_pressure).toFixed(2)
-              : "-"}{" "}
-            м
-          </div>
-        </>
-      )}
-
-      {/* Поля ТОЛЬКО для ТРУБЫ */}
-      {editingElement.type === "pipe" && (
-        <>
-          <div style={styles.inputGroup}>
-            <label>Длина (м)</label>
-            <input
-              style={styles.input}
-              type="number"
-              name="length"
-              value={formData.length || 0}
-              onChange={handleChange}
-            />
-          </div>
-          <div style={styles.inputGroup}>
-            <label>Диаметр (мм)</label>
-            <input
-              style={styles.input}
-              type="number"
-              name="diameter"
-              value={formData.diameter || 0}
-              onChange={handleChange}
-            />
-          </div>
-          {/* ===== МАТЕРИАЛ ===== */}
-          <div style={styles.inputGroup}>
-            <label>Материал</label>
-            <select
-              style={styles.input}
-              name="material"
-              value={formData.material || "custom"}
-              onChange={handleMaterialChange}
-            >
-              {Object.entries(materialsDB).map(([key, info]) => (
-                <option key={key} value={key}>
-                  {info.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* ===== ШЕРОХОВАТОСТЬ ===== */}
-          <div style={styles.inputGroup}>
-            <label>Шероховатость (мм)</label>
-            <input
-              style={{
-                ...styles.input,
-                background:
-                  formData.material && formData.material !== "custom"
-                    ? "#eee"
-                    : "white",
-              }}
-              type="number"
-              step="0.01"
-              name="roughness_coefficient"
-              value={formData.roughness_coefficient || 0}
-              onChange={handleChange}
-              readOnly={formData.material && formData.material !== "custom"}
-            />
-            {formData.material && formData.material !== "custom" && (
-              <small style={{ fontSize: "10px", color: "gray" }}>
-                Автоматически по материалу
-              </small>
+            {formData.node_type === "Junction" ? (
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Потребление (м³/с)</label>
+                <input
+                  className={styles.input}
+                  type="number"
+                  step="0.001"
+                  name="base_demand"
+                  value={formData.base_demand || 0}
+                  onChange={handleChange}
+                />
+              </div>
+            ) : (
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Напор источника (м)</label>
+                <input
+                  className={styles.input}
+                  type="number"
+                  name="fixed_head"
+                  value={formData.fixed_head || 0}
+                  onChange={handleChange}
+                />
+              </div>
             )}
-          </div>
 
-          {/* Результаты расчета (только чтение) */}
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "10px",
-              background: "#e9ecef",
-            }}
-          >
-            <strong>Результаты:</strong>
-            <br />
-            Расход:{" "}
-            {formData.calculated_flow_rate
-              ? Math.abs(formData.calculated_flow_rate).toFixed(4)
-              : "-"}{" "}
-            <br />
-            Скорость:{" "}
-            {formData.calculated_velocity
-              ? Math.abs(formData.calculated_velocity).toFixed(2)
-              : "-"}{" "}
-            м/с
-          </div>
-        </>
-      )}
+            {formData.calculated_pressure != null && (
+              <div className={styles.resultsPanel}>
+                <h4 className={styles.resultsTitle}>Анализ</h4>
+                <div className={styles.resultRow}>
+                  <span className={styles.resultLabel}>Давление:</span>
+                  <span className={styles.resultValue}>
+                    {parseFloat(formData.calculated_pressure).toFixed(2)} м
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
-      <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-        <button style={styles.btnSave} onClick={handleSave}>
-          Сохранить
+        {/* --- ПОЛЯ ТРУБЫ --- */}
+        {!isNode && (
+          <>
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Длина (м)</label>
+              <input
+                className={styles.input}
+                type="number"
+                name="length"
+                value={formData.length || 0}
+                onChange={handleChange}
+              />
+            </div>
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Диаметр (мм)</label>
+              <input
+                className={styles.input}
+                type="number"
+                name="diameter"
+                value={formData.diameter || 0}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Материал</label>
+              <select
+                className={styles.select}
+                name="material"
+                value={formData.material || "custom"}
+                onChange={handleMaterialChange}
+              >
+                {Object.entries(materialsDB).map(([key, info]) => (
+                  <option key={key} value={key}>
+                    {info.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Шероховатость (мм)</label>
+              <input
+                className={`${styles.input} ${formData.material !== "custom" ? styles.inputReadOnly : ""}`}
+                type="number"
+                step="0.01"
+                name="roughness_coefficient"
+                value={formData.roughness_coefficient || 0}
+                onChange={handleChange}
+                readOnly={formData.material !== "custom"}
+              />
+              {formData.material !== "custom" && (
+                <span className={styles.hint}>Автоматически по материалу</span>
+              )}
+            </div>
+
+            {formData.calculated_flow_rate != null && (
+              <div className={styles.resultsPanel}>
+                <h4 className={styles.resultsTitle}>Гидравлика</h4>
+                <div className={styles.resultRow}>
+                  <span className={styles.resultLabel}>Расход (Q):</span>
+                  <span className={styles.resultValue}>
+                    {Math.abs(formData.calculated_flow_rate).toFixed(4)} м³/с
+                  </span>
+                </div>
+                <div className={styles.resultRow}>
+                  <span className={styles.resultLabel}>Скорость (V):</span>
+                  <span className={styles.resultValue}>
+                    {Math.abs(formData.calculated_velocity).toFixed(2)} м/с
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className={styles.footer}>
+        <button className={styles.btnSave} onClick={handleSave}>
+          Сохранить изменения
         </button>
-
-        <button
-          style={{
-            padding: "10px",
-            background: "#dc3545",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-          }}
-          onClick={handleDelete}
-        >
-          🗑 Удалить
+        <button className={styles.btnDelete} onClick={handleDelete}>
+          Удалить элемент
         </button>
       </div>
-    </div>
+    </aside>
   );
 };
 
