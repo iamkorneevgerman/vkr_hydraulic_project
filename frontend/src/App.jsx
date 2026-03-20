@@ -1,20 +1,27 @@
-// src/App.jsx
 import React, { useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { loadNetwork } from "./store/networkSlice";
 import MapComponent from "./components/MapComponent";
 import Toolbar from "./components/Toolbar";
 import Sidebar from "./components/Sidebar";
+import AuthPage from "./components/AuthPage";
 
 function App() {
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    // ВОТ ЗДЕСЬ МЫ ЗАДАЕМ ID ПРОЕКТА ОДИН РАЗ
-    const MY_PROJECT_ID = 4;
+  const { currentProjectId } = useSelector((state) => state.network);
+  const { isAuthenticated } = useSelector((state) => state.auth);
 
-    dispatch(loadNetwork(MY_PROJECT_ID));
-  }, [dispatch]);
+  useEffect(() => {
+    if (isAuthenticated && currentProjectId) {
+      dispatch(loadNetwork(currentProjectId));
+    }
+  }, [dispatch, currentProjectId, isAuthenticated]);
+
+  // Если не авторизован — блокируем всё
+  if (!isAuthenticated) {
+    return <AuthPage />;
+  }
 
   return (
     <div

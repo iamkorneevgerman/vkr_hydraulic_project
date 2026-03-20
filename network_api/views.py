@@ -1,25 +1,38 @@
 # network_api/views.py
 
-# ... (твои импорты)
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+
+from django.contrib.auth.models import User
+
 from .models import Project, Node, Pipe
-from .serializers import ProjectSerializer, NodeSerializer, PipeSerializer
+from .serializers import ProjectSerializer, NodeSerializer, PipeSerializer, RegisterSerializer
 from .services import HydraulicSolver
 
+from rest_framework import generics
+from rest_framework.permissions import AllowAny
+
+# === ВЬЮХА ДЛЯ РЕГИСТРАЦИИ ===
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = (AllowAny,) # Регистрация доступна всем
+    serializer_class = RegisterSerializer
+
 class ProjectViewSet(viewsets.ModelViewSet):
-    queryset = Project.objects.all()
     serializer_class = ProjectSerializer
 
-    #def get_queryset(self):
-        # Если пользователь не авторизован - отдаем пустой список (или можно тестовые данные)
-        #if not self.request.user.is_authenticated:
-          #  return Project.objects.none() 
-        # Отдаем ТОЛЬКО проекты, принадлежащие текущему пользователю
-       # return Project.objects.filter(owner=self.request.user)
+    def get_queryset(self):
+        # Безопасно: если пользователь не авторизован — пусто
+        if not self.request.user.is_authenticated:
+            return Project.objects.none()
 
-    # ... (стандартный код ViewSet) ...
+        # Только свои проекты
+        return Project.objects.filter(owner=self.request.user)
+
+    def perform_create(self, serializer):
+        # Назначаем владельца автоматически
+        serializer.save(owner=self.request.user)
 
     # === ОБНОВЛЕННЫЙ ЭНДПОИНТ ДЛЯ РАСЧЕТА ===
     @action(detail=True, methods=['post'])
@@ -29,7 +42,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         URL: POST /api/projects/{id}/calculate/
         Возвращает: JSON с обновленными данными узлов и труб.
         """
-        project = self.get_object() # Получаем текущий проект
+        # project = self.get_object() # Получаем текущий проект
+        project = self.get_queryset().get(pk=pk)
         
         # 1. Запускаем математику (наш сервис)
         solver = HydraulicSolver(project.id)
@@ -74,15 +88,22 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
 # ViewSet для Узлов
 class NodeViewSet(viewsets.ModelViewSet):
-    queryset = Node.objects.all()
     serializer_class = NodeSerializer
+    filterset_fields = ['project']
     
-    # Опционально: можно добавить фильтрацию, чтобы получать узлы конкретного проекта
-    # Например: /api/nodes/?project=1
-    filterset_fields = ['project'] 
+    def get_queryset(self):
+            if not self.request.user.is_authenticated:
+                return Node.objects.none()
+
+            return Node.objects.filter(project__owner=self.request.user) 
 
 # ViewSet для Труб
 class PipeViewSet(viewsets.ModelViewSet):
-    queryset = Pipe.objects.all()
     serializer_class = PipeSerializer
     filterset_fields = ['project']
+
+    def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            return Pipe.objects.none()
+
+        return Pipe.objects.filter(project__owner=self.request.user)

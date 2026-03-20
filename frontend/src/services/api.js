@@ -3,12 +3,39 @@ import axios from "axios";
 // Создаем экземпляр axios с базовыми настройками
 const api = axios.create({
   baseURL: "/api", // Vite проксирует это на http://127.0.0.1:8000/api
-  // 1. Разрешаем передачу кук (там лежит сессия админа)
-  withCredentials: true,
-  // 2. Учим axios искать CSRF токен в куках Django и отправлять его в заголовке
-  xsrfCookieName: "csrftoken",
-  xsrfHeaderName: "X-CSRFToken",
 });
+
+// === ИНТЕРСЕПТОР (АВТО-ПОДСТАНОВКА ТОКЕНА) ===
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("access_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// === АВТОРИЗАЦИЯ ===
+export const loginUser = async (username, password) => {
+  const response = await api.post("/auth/login/", {
+    username,
+    password,
+  });
+
+  // Сохраняем токены
+  localStorage.setItem("access_token", response.data.access);
+  localStorage.setItem("refresh_token", response.data.refresh);
+
+  return response.data;
+};
+
+export const registerUser = async (username, password) => {
+  const response = await api.post("/auth/register/", {
+    username,
+    password,
+  });
+
+  return response.data;
+};
 
 // Функция для получения узлов конкретного проекта
 export const fetchNodes = async (projectId) => {

@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     # Сторонние приложения
     'rest_framework',
     'rest_framework_gis',
+    'rest_framework_simplejwt',
     'corsheaders',
 
     # Наши приложения
@@ -165,10 +166,11 @@ CSRF_TRUSTED_ORIGINS = [
 # 4. Настройки доступа (DRF)
 # Пока разрешаем доступ ВСЕМ (AllowAny), чтобы не мучиться с логином
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny', 
+    'DEFAULT_PERMISSION_CLASSES':[
+        'rest_framework.permissions.IsAuthenticated', # Теперь API закрыто по умолчанию!
     ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+    'DEFAULT_AUTHENTICATION_CLASSES':[
+        'rest_framework_simplejwt.authentication.JWTAuthentication', # Включаем JWT
+        'rest_framework.authentication.SessionAuthentication', # Оставляем для админки
     ],
 }

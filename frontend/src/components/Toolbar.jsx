@@ -15,6 +15,7 @@ import {
   FileDown,
 } from "lucide-react";
 import { exportProjectToExcel } from "../utils/exportToExcel";
+import { logout } from "../store/authSlice";
 
 const Toolbar = () => {
   const dispatch = useDispatch();
@@ -22,6 +23,7 @@ const Toolbar = () => {
   const { mode } = useSelector((state) => state.ui);
   const { calculationStatus, currentProjectId, nodes, pipes, projectsList } =
     useSelector((state) => state.network);
+  const { username } = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(loadProjectList());
@@ -111,6 +113,28 @@ const Toolbar = () => {
         gap: "5px",
       }}
     >
+      {/* Пользователь */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.8)",
+          padding: "8px",
+          borderRadius: "10px",
+          backdropFilter: "blur(4px)",
+          marginBottom: "10px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          fontSize: "12px",
+        }}
+      >
+        <span>👤 {username}</span>
+        <span
+          style={{ color: "red", cursor: "pointer", fontWeight: "bold" }}
+          onClick={() => dispatch(logout())}
+        >
+          Выйти
+        </span>
+      </div>
       {/* Выбор проекта */}
       <div
         style={{
